@@ -1,0 +1,267 @@
+Processus Automatisation Déploiement Policy 
+
+1. **Phase de Préparation**
+   - Création de l'arborescence projet Policy .
+   - Préparation du projet api en XML.
+   - Configuration des variables d'environnement 
+   - Génération  des fichiers .pol et .env  à partir du apiprojects  
+
+
+mon-projet/
+├── apiproject/                # Export Policy Studio (policies, etc.)
+├── src/
+│   ├──.env
+│   ├── .pol
+├── scripts/                   # Scripts d'automatisation
+│   ├── envconfig.py
+│   ├── secrets.py
+│   ├── buildfed.py
+├── config/
+     ├── certs/                   # Certificats
+│          └── .p12
+│   └── gateway.config.json  # fichier de configuration par entité gènèré par le script envConfig s’il existe pas ou mis à jour . 
+│   └── gateway.certs.json    #
+│   └── gateway.crypt.json    # fichier des secrets, les valeurs sont cryptés et accessibles  
+				à  travers une clé
+│   └── gateway.props.json      # fichier de properties utilisés pour les champs variabilisés dans  les fichiers de config ou certificats 
+
+├── build/
+│   └── (généré dynamiquement : merged.env, deployment.fed)
+├── ci/
+│   └── gitlab-ci.yml
+└── README.md
+
+
+projpack --create --passphrase=my_text --name=my_package --add /home/user1/apiprojects/proj1 --projpass=my_text
+
+
+
+2. **Phase de Configuration**
+   - Création et configuration  des entités environnementales dans des fichiers de configuration JSON.
+   - Configuration des propriétés
+   - Configuration des certificats
+   - Configuration des secrets
+
+
+Exemple de fichier configuration JSON 
+
+{
+    "entities": { (1)
+        "/[CircuitContainer]name=Hello World/[FilterCircuit]name=Hello World Message/[SetAttributeFilter]name=Set name": { (2)
+            "description": "Name for the 'Hello World' message.",
+            "fields": {
+                "attributeValue#0": { (3)
+                    "source": "property", (4)
+                    "type": "string", (5)
+                    "used": true, (6)
+                    "value": "foobar" (7)
+                }
+            }
+        },
+        "/[CircuitContainer]name=Hello World/[FilterCircuit]name=Hello World Message/[SetAttributeFilter]name=Build time": {
+            "description": "Build time in ISO format.",
+            "fields": {
+                "attributeValue#0": {
+                    "source": "property",
+                    "type": "string",
+                    "used": true,
+                    "value": "_system.build.datetime" (8)
+                }
+            }
+        },
+        "/[CircuitContainer]name=Hello World/[FilterCircuit]name=Hello World Message/[SetAttributeFilter]name=Network zone": {
+            "description": "Network zone the API Gateway is located.",
+            "fields": {
+                "attributeValue#0": {
+                    "source": "value"
+                    "type": "string",
+                    "used": true,
+                    "value": "internal" (9)
+                }
+            }
+        },
+        "/[CircuitContainer]name=Hello World/[FilterCircuit]name=Hello World Message/[SetAttributeFilter]name=User": {
+            "description": "Name of the user building the .fed",
+            "fields": {
+                "attributeValue#0": {
+                    "source": "env" (10)
+                    "type": "string",
+                    "used": true,
+                    "value": "USERNAME" (11)
+                }
+            }
+        },
+        "/[CircuitContainer]name=Hello World/[FilterCircuit]name=Hello World Message/[SetAttributeFilter]name=Secret": {
+            "description": "Some secret information",
+            "fields": {
+                "attributeValue#0": {
+                    "source": "secrets" (12)
+                    "type": "string",
+                    "used": true,
+                    "value": "secret" (13)
+                }
+            }
+        }
+    }
+    "properties": { (14)
+        "foobar": "myvalue"
+    }
+}
+
+Exemple de fichier properties
+{
+    "properties": { (1)
+        "name1": "value1", (2)
+        "name2": "value2"
+    }
+}
+
+
+Exemple de fichier configuration Certificats 
+ 
+{
+    "certificates": { (1)
+        "extern-crt": { (2)
+            "origin": { (3)
+                "info": {
+                    "not_after": "2020-05-21T07:04:00+02:00", (4)
+                    "subject": "CN=extern, O=Axway, L=Berlin, ST=Berlin, C=DE" (5)
+                }
+            },
+            "update": { (6)
+                "file": "cert/extern.crt", (7)
+                "type": "crt" (8)
+            }
+        },
+        "server-p12": {
+            "origin": {
+                "info": {
+                    "not_after": "2020-05-21T07:02:00+02:00",
+                    "subject": "CN=server, O=Axway, L=Berlin, ST=Berlin, C=DE"
+                }
+            },
+            "update": {
+                "file": "cert/server.p12",
+                "password": "server", (9)
+                "source": "password", (10)
+                "type": "p12"
+            }
+        },
+        "test": {
+            "origin": {
+                "info": {
+                    "not_after": "2021-09-30T16:01:15+02:00",
+                    "subject": "CN=DST Root CA X3, O=Digital Signature Trust Co."
+                }
+            },
+            "update": null (11)
+        },
+        "test2": { (12)
+            "update": {
+                "file": "cert/server.p12",
+                "password": "server.password", (13)
+                "source": "property", (14)
+                "type": "p12"
+            }
+        },
+        "test3": {
+            "update": {
+                "file": "cert/server.p12",
+                "password": "TEST3_PASSWORD", (15)
+                "source": "env", (16)
+                "type": "p12"
+            }
+        },
+        "test4": {
+            "origin": {
+                "info": {
+                    "not_after": "2021-09-30T16:01:15+02:00",
+                    "subject": "CN=DST Root CA X3, O=Digital Signature Trust Co."
+                }
+            },
+            "update": {
+                "type": "empty" (17)
+            }
+        }
+    }
+}
+
+Exemple de secrets : 
+{
+  "secrets": { (1)
+    "__": "3QjoMSfhSelmvMlvcgCdyHf+oTyVnHlyneA3stpN0iQKJ1BUIrY9OA==", (2)
+    "my.password": "encrypt:changeme", (3)
+    "cert.password": "eL5+ogfSxQue8+NA0/l859g/2nTFwxBUp/7l7z/sMOE=" (4)
+  }
+}
+
+
+#!/bin/bash
+
+
+# Génération de la clé de chiffrement
+openssl rand -out key.binary 32
+
+
+# Chiffrement des secrets
+$AXWAY_HOME/apigateway/posix/bin/scripts/encrypt.sh \
+   --input config/secrets.txt \
+   --output config/gateway.crypt.json \
+   --key key.binary
+
+
+3. **Phase de Génération**
+   - Lecture des fichiers source
+   - Application des configurations
+   - Génération du fichier .fed
+   - Vérification de la génération
+
+
+$AXWAY_HOME/apigateway/posix/bin/scripts/buildfed.sh \
+   -e src/gateway.env \
+   -p src/gateway.pol \
+   -c config/gateway.config.json \
+   --cert=config/gateway.certs.json \
+   --prop=config/gateway.props.json \
+   --output-fed=output/gateway.fed \
+   --passphrase-in=changeme \
+   --passphrase-out=changed \
+   -D "artifact:demo-1.0.0" \
+   --secrets-file=config/gateway.crypt.json \
+   --secrets-key=key.binary
+
+
+4. **Phase de Déploiement**
+   - Déploiement sur l'API Gateway
+   - Vérification du déploiement
+   - Validation des services
+
+$AXWAY_HOME/apigateway/posix/bin/managedomain \
+   --deploy \
+   --file output/gateway.fed \
+   --host localhost \
+   --port 8090 \
+   --username admin \
+   --password admin_password \
+   --passphrase changed
+
+
+
+Points importants à noter :
+Sécurité :
+Le fichier key.binary doit être sécurisé
+Les mots de passe ne doivent pas être en clair
+Les certificats doivent être protégés
+Vérifications :
+Vérifier les permissions des fichiers
+Vérifier la présence des fichiers source
+Vérifier les configurations
+Environnement :
+AXWAY_HOME doit être correctement configuré
+Les variables d'environnement doivent être définies
+Les ports doivent être disponibles
+Déploiement :
+Vérifier les logs après le déploiement
+Tester les endpoints
+Valider la configuration
+
