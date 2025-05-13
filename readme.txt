@@ -1,129 +1,73 @@
-# Draw.io Schema Layout
+🔁 1. Intégration Bitbucket → AWX
+🎯 Objectif :
+Bitbucket (via Pipelines) déclenche automatiquement un job AWX.
 
-## Main Components (Rectangles)
+⚙️ Comment faire :
+Tu configures un pipeline dans .bitbucket-pipelines.yml.
 
-1. Input Components (Blue Rectangle Group)
-   - Policy Archive (policy.fed)
-   - Environment Archive (env.fed)
-   - Configuration Files (config.json)
-   - Certificate Config (cert_config.json)
+Ce pipeline fait un appel API vers AWX :
 
-2. FedConfigurator Core (Green Rectangle)
-   - Contains internal processing logic
-   - Certificate Management
-   - Entity Configuration
-   - Archive Generation
+bash
+Copier
+Modifier
+curl -X POST https://awx.yourcompany.com/api/v2/job_templates/42/launch/ \
+  -H "Authorization: Bearer $AWX_TOKEN"
+🧩 Ce que fait AWX :
+Lance un playbook Ansible.
 
-3. Output Components (Orange Rectangle Group)
-   - Deployment Archive (output.fed)
-   - Environment Archive (output.env)
+Ce playbook va gérer :
 
-## Relationships (Arrows)
+la récupération des secrets,
 
-1. Data Flow Arrows (Blue Arrows)
-   - Input files → FedConfigurator
-   - FedConfigurator → Output files
+la connexion SSH,
 
-2. Process Flow Arrows (Green Arrows)
-   - Configuration validation
-   - Entity processing
-   - Certificate management
-   - Archive generation
+et l’exécution des scripts buildfed.py et deployfed.sh.
 
-## Component Details
+🔐 2. Intégration AWX → Vault (Vault Access)
+🎯 Objectif :
+AWX va récupérer dynamiquement les secrets nécessaires pour exécuter les scripts (ex: credentials API Gateway, certificats, .env).
 
-1. FedConfigurator Box
-   [Main Process]
-   ┌─────────────────────────┐
-   │     FedConfigurator     │
-   │                         │
-   │ ┌─────────┐ ┌────────┐ │
-   │ │ Entity  │ │  Cert  │ │
-   │ │ Config  │ │ Config │ │
-   │ └─────────┘ └────────┘ │
-   │                         │
-   │ ┌─────────┐ ┌────────┐ │
-   │ │ Archive │ │ Deploy │ │
-   │ │  Gen    │ │ Config │ │
-   │ └─────────┘ └────────┘ │
-   └─────────────────────────┘
+⚙️ Comment faire :
+Dans AWX, tu définis un Credential Type Vault.
 
-2. Input/Output Flow
-   [Input]         [Process]        [Output]
-   ┌─────┐         ┌─────┐         ┌─────┐
-   │ .fed├────────►│     │         │.fed │
-   └─────┘         │     │         └─────┘
-   ┌─────┐         │     │         ┌─────┐
-   │.json├────────►│     ├────────►│.env │
-   └─────┘         │     │         └─────┘
-   ┌─────┐         │     │
-   │Certs├────────►│     │
-   └─────┘         └─────┘
+Ton playbook inclut une tâche de ce type :
 
-## Color Scheme
-- Input Components: #4B88FF (Light Blue)
-- Processing Core: #50C878 (Emerald Green)
-- Output Components: #FFA500 (Orange)
-- Arrows: #808080 (Gray)
-- Text: #000000 (Black)
+yaml
+Copier
+Modifier
+- name: Get secrets from Vault
+  ansible.builtin.uri:
+    url: "https://vault.yourcompany.com/v1/secret/data/gateway"
+    method: GET
+    headers:
+      X-Vault-Token: "{{ vault_token }}"
+    return_content: yes
+Tu peux aussi utiliser le plugin hashicorp.vault natif dans Ansible.
 
-## Layout Instructions for Draw.io
+🔐 3. Intégration AWX → SSH (SSH Connection)
+🎯 Objectif :
+Se connecter à une VM d’exécution pour lancer le script de déploiement.
 
-1. Main Layout:
-   - Use horizontal flow from left to right
-   - Input components on left
-   - Processing in center
-   - Output on right
+⚙️ Comment faire :
+AWX utilise une clé SSH stockée dans un Credential.
 
-2. Component Grouping:
-   - Group related components using containers
-   - Use consistent spacing between groups
-   - Align components vertically within groups
+Le playbook se connecte comme ceci :
 
-3. Arrow Styling:
-   - Use curved connectors for process flow
-   - Use straight connectors for direct data flow
-   - Add arrowheads to show direction
+yaml
+Copier
+Modifier
+- name: Run deployfed.sh
+  ansible.builtin.shell: "./deployfed.sh"
+  args:
+    chdir: /home/deploy/scripts
+La connexion SSH est faite automatiquement via l’inventaire de la VM cible (hostname + user + clé).
 
-4. Text Formatting:
-   - Use sans-serif font (Helvetica or Arial)
-   - Component titles: 12pt bold
-   - Descriptions: 10pt normal
-   - Labels: 9pt italic
-
-5. Shapes:
-   - Input/Output Files: Document shapes
-   - Processes: Rectangles with rounded corners
-   - Groups: Containers with dashed borders
-   - Configuration: Gear icons
-
-## Additional Elements
-
-1. Legend Box (Bottom Right):
-   ```
-   ┌─────────────────┐
-   │     Legend      │
-   ├─────────────────┤
-   │ ■ Input Files   │
-   │ ■ Core Process  │
-   │ ■ Output Files  │
-   │ → Data Flow     │
-   │ ⇢ Process Flow  │
-   └─────────────────┘
-   ```
-
-2. Notes Section (Optional):
-   - Add implementation notes
-   - System requirements
-   - Dependencies
-   - Version information
-
-This schema design can be directly implemented in Draw.io by:
-1. Creating the basic shapes
-2. Adding the connections
-3. Implementing the color scheme
-4. Adding the text and labels
-5. Grouping related components
-6. Adding the legend and notes
-
-Would you like me to provide more specific details about any part of this schema, or would you like guidance on implementing specific sections in Draw.io?
+🧱 Récapitulatif de l’intégration
+ÉTAPE	ACTION AUTOMATISÉE
+Bitbucket push	Active un pipeline CI
+Pipeline CI Bitbucket	Fait un appel API vers AWX
+AWX job template	Exécute un playbook Ansible
+Playbook AWX	1. Récupère les secrets via Vault
+2. Se connecte en SSH
+Sur la VM cible	Exécute buildfed.py puis deployfed.sh
+API Gateway	Reçoit le .fed via CLI ou REST API
