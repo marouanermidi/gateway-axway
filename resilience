@@ -1,0 +1,28 @@
+Hello
+
+Comme échangé avec Lionel,
+
+Nous montrons ce point pour évoquer ensemble ce qui pourrait être envisageable en termes de test unitaire PSI concernant la SPS interne,
+
+Objectifs : 
+-	Valider la SPS interne 100% virtualisée, et sa résilience, dans leur cible
+-	Répondre aux problématiques SPS / bases Cassandra soulevées en Sept/Octo dernier lors des bascules ESX
+
+
+
+Petit CR de la réunion de ce matin (13/05) / Opportunité de réaliser un test unitaire PSI SPS / Cassandra en prévision de l'exercice PSI de septembre 2025.
+
+Eléments de décision :
+
+-	Incident hardware sur des0000390 ayant engendré une localisation de toutes les VM SPS du Legacy sur le site de Noisiel (ESX des0000389) sans incidence applicative (cf pj)
+-	Localisation sur SERRIS de toutes les VM Cassandra du Legacy (sur 3 ESX différents) avec proximité de leur stockage sur le même DC (affinité)
+-	Incertitude sur une intégration au périmètre 2025 du stockage NAS dans le test PSI de septembre (consommé par les VM Cassandra)
+-	Opération de migration des données NAS sur la baie AFFA1000 et décision à venir d'inclure cette baie au périmètre PSI 2025 (cf pj)
+-	Projet de migration des instances SPS sur des infrastructures dans le Cloud Interne (terminé côté EP & PdV-DFP et Partiel côté DPS) induisant une charge moindre sur les VM SPS du Legacy
+
+Au vu de ces éléments, les VM SPS du Legacy ont démontré une résilience à être toutes hébergées sur le DC de Noisiel.
+Un test PSI unitaire basé sur le seul déplacement des VM Cassandra (partie Compute) sur le DC de Noisiel sans embarquer le stockage engendre un risque fort (et inapproprié) en ce qui concerne le service rendu par les socles SPS.
+
+Proposition effectuée en séance : Prioriser la migration des datastores contenant le stockage des VM Cassandra sur la nouvelle baie AFFA1000 (action Virtu).
+Avantages : Bénéficier d'une infrastructure plus performante côté stockage NAS en cas d'exclusion au périmètre 2025 de la partie stockage applicatif NAS.
+
