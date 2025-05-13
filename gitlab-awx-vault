@@ -1,0 +1,112 @@
+Bien sûr ! Voici l'équivalent de ta **mindmap CI/CD** mais adapté à un workflow avec **GitLab CI/CD** au lieu de Bitbucket.
+Tu retrouveras les mêmes étapes : **GitLab → AWX → Vault → SSH → API Gateway**, expliquées clairement avec les intégrations.
+
+---
+
+## 🧠 MINDMAP BRANCH: **GitLab CI/CD → AWX / Vault / SSH Integration**
+
+---
+
+### 🔁 **1. GitLab CI/CD → AWX**
+
+#### 🎯 Objectif :
+
+Le pipeline GitLab déclenche un **job AWX** via l’API REST d’AWX.
+
+#### ⚙️ Exemple `.gitlab-ci.yml` :
+
+```yaml
+stages:
+  - deploy
+
+deploy_to_awx:
+  stage: deploy
+  script:
+    - curl -X POST https://awx.example.com/api/v2/job_templates/42/launch/
+        -H "Authorization: Bearer $AWX_TOKEN"
+```
+
+#### 🔐 Stockage sécurisé :
+
+* Le `AWX_TOKEN` est stocké dans **GitLab CI/CD variables**.
+* Tu peux aussi utiliser **Vault JWT Auth** pour que GitLab récupère dynamiquement un token Vault sécurisé.
+
+---
+
+### 🔐 **2. AWX → Vault (Secret Retrieval)**
+
+#### 🎯 Objectif :
+
+AWX récupère les secrets (env, credentials, certs) depuis **Vault** avant l’exécution.
+
+#### ⚙️ Intégration dans AWX :
+
+* Utilise un **Vault Credential Type** dans AWX.
+* Playbook Ansible exemple :
+
+```yaml
+- name: Read secrets from Vault
+  community.hashi_vault.vault_read:
+    url: https://vault.example.com
+    token: "{{ vault_token }}"
+    secret: secret/data/api_gateway/env
+  register: secrets
+```
+
+* Les variables récupérées sont injectées dans l’environnement avant exécution des scripts.
+
+---
+
+### 🔐 **3. AWX → SSH vers VM d’exécution**
+
+#### 🎯 Objectif :
+
+AWX se connecte à la **VM cible** via SSH pour lancer les scripts `buildfed.py` et `deployfed.sh`.
+
+#### ⚙️ Dans le playbook :
+
+```yaml
+- name: Deploy .fed
+  ansible.builtin.shell: |
+    cd /opt/deployment
+    ./buildfed.py -e prod.env
+    ./deployfed.sh
+  delegate_to: remote-vm.example.com
+```
+
+* La clé SSH est gérée dans **AWX Credentials** et utilisée automatiquement.
+
+---
+
+### 🧱 Résumé de la chaîne GitLab CI/CD complète
+
+| Étape CI/CD     | Action réalisée                                     |
+| --------------- | --------------------------------------------------- |
+| Push GitLab     | Déclenche le pipeline `.gitlab-ci.yml`              |
+| GitLab pipeline | Appelle AWX API pour lancer un job                  |
+| AWX Job         | Lance un playbook :                                 |
+|                 | → Récupère les secrets via Vault                    |
+|                 | → Se connecte via SSH à une VM                      |
+|                 | → Exécute `buildfed.py` et `deployfed.sh`           |
+| API Gateway     | Reçoit le fichier `.fed` déployé via RESTMAN ou CLI |
+
+---
+
+### 📂 Structure du dépôt GitLab (exemple)
+
+```
+/
+├── .gitlab-ci.yml
+├── policies/
+│   └── api.pol
+├── scripts/
+│   ├── buildfed.py
+│   └── deployfed.sh
+```
+
+---
+
+Souhaites-tu :
+
+* un **exemple de Vault JWT Auth** pour que GitLab accède directement à Vault ?
+* un **template complet de playbook AWX** adapté à ce flow ?
