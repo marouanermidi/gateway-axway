@@ -1,0 +1,46 @@
+   succeeded = self.__configure_entities()
+  File "/usr/product/axway/7.7.0/automation-policy/scripts/lib/fedconfig.py", 
+  
+  line 94, in _FedConfigurator__configure_entities
+  
+    raise ValueError("Reference types are not supported for environmentalization: name=%s; index=%d; type=%s; entity=%s" \
+	
+ValueError:
+ Reference types are not supported for environmentalization: 
+ name=signingCert; index=0; type=reference;
+ entity=
+ /[CircuitContainer]name=IDP Saml Tableau
+ /[FilterCircuit]name=Create SAML Response for Desktop/
+ [GenerateSignatureFilter]name=XML Signature Generation
+
+
+
+
+<entity xmlns="http://www.vordel.com/2005/06/24/entityStore"  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" type="EnvironmentalizedEntity" entityPK="5193608650929253492" parentPK="-2133568791600485394">
+<fval name="entityPk">
+<value contentType="reference">
+	<key type='CircuitContainer'>
+		<id field='name' value='IDP Saml Tableau'/>
+		<key type='FilterCircuit'>
+			<id field='name' value='Saml Logout Tableau'/>
+				<key type='GenerateSignatureFilter'>
+					<id field='name' value='XML Signature Generation'/>
+				</key>
+		</key>
+	</key>	
+</value>
+</fval>
+</entity>
+
+
+<entity xmlns="http://www.vordel.com/2005/06/24/entityStore"  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" type="EnvironmentalizedEntity" entityPK="-3716991020225997639" parentPK="-2133568791600485394">
+	<fval name="entityPk">
+	<value contentType="reference">
+<key type='CircuitContainer'>
+<id field='name' value='IDP Saml Tableau'/>
+<key type='FilterCircuit'>
+<id field='name' value='Create SAML Response for Desktop'/><key type='CopyAttributeFilter'><id field='name' value='Set Saml Attribute for Desktop'/><key type='CopyAttribute'><id field='fromAttributeName' value=''/><id field='fromAttributeNamespace' value=''/><id field='toAttributeName' value='saml.issuer'/><id field='toAttributeNamespace' value=''/></key></key></key></key>	</value></fval>
+</entity>
+
+
+
